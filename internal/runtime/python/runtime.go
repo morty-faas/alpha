@@ -1,4 +1,4 @@
-package node
+package python
 
 import (
 	"encoding/json"
@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	runtimeName = "node"
+	runtimeName = "python"
 )
 
 type runtime struct {
@@ -52,21 +52,21 @@ func (r *runtime) Name() string {
 // An error can be returned if the executable can't be found in $PATH,
 // or if the command can't be executed for any reasons.
 func (r *runtime) Version() (string, error) {
-	cmd := exec.Command("node", "-v")
+	cmd := exec.Command("python", "-c", "import sys; print(sys.version[:6])")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimSuffix(string(out), "\n"), nil
+	return strings.TrimSpace(string(out)), nil
 }
 
 // Execute runs a function using the runtime.
 func (r *runtime) Execute(iid, wd string, vars run.FnVars) (*run.FnExecution, error) {
 	logger := r.Logger.WithField("wd", wd).WithField("iid", iid)
 
-	// First, we need to check for a package.json file inside the current working directory
+	// First, we need to check for a requirements.txt file inside the current working directory
 	// and if it exists, we run the dependencies installation task
-	if _, err := os.Stat(filepath.Join(wd, "package.json")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(wd, "requirements.txt")); !os.IsNotExist(err) {
 		if err := r.installDependencies(wd); err != nil {
 			return nil, err
 		}
@@ -77,21 +77,22 @@ func (r *runtime) Execute(iid, wd string, vars run.FnVars) (*run.FnExecution, er
 	// The index.js file must export a function called `handler` in order to be executed.
 	// We need to inject a custom wrapper in order to pass context / variables to our functions.
 	wrapper := []byte(`
-		const fn = require("./index")
-		
-		const context = JSON.parse(process.argv[2]);
-		
-		console.log(fn.handler(context))
+from main import handler
+import sys, json
+
+context = json.loads(sys.argv[1]);
+
+print(handler(context))
 	`)
 
-	trigger := fmt.Sprintf("%s.js", iid)
+	trigger := fmt.Sprintf("%s.py", iid)
 	if err := os.WriteFile(filepath.Join(wd, trigger), wrapper, 0644); err != nil {
 		panic(err)
 	}
 
 	jsonVars, _ := json.Marshal(vars)
 
-	cmd := exec.Command("node", trigger, string(jsonVars))
+	cmd := exec.Command("python", trigger, string(jsonVars))
 	cmd.Dir = wd
 	out, _ := cmd.CombinedOutput()
 
@@ -103,7 +104,7 @@ func (r *runtime) Execute(iid, wd string, vars run.FnVars) (*run.FnExecution, er
 
 func (r *runtime) installDependencies(wd string) error {
 	r.Logger.Info("Installing dependencies")
-	cmd := exec.Command("npm", "install")
+	cmd := exec.Command("pip", "install", "-r", "requirements.txt")
 	cmd.Dir = wd
 	out, err := cmd.CombinedOutput()
 	r.Logger.Trace(string(out))
