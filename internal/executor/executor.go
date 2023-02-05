@@ -3,14 +3,16 @@ package executor
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/polyxia-org/agent/internal/api"
 	"github.com/polyxia-org/agent/internal/runtime"
 	"github.com/polyxia-org/agent/internal/runtime/node"
+	"github.com/polyxia-org/agent/internal/runtime/python"
 	"github.com/polyxia-org/agent/internal/utils"
 	log "github.com/sirupsen/logrus"
-	"path/filepath"
-	"time"
 )
 
 type Executor struct {
@@ -37,6 +39,12 @@ func New() (*Executor, error) {
 		logger.Errorf("runtime/node failed to initialize: %v", err)
 	} else {
 		runtimes[nodejs.Name()] = nodejs
+	}
+	pythonRuntime, err := python.New()
+	if err != nil {
+		logger.Errorf("runtime/python failed to initialize: %v", err)
+	} else {
+		runtimes[pythonRuntime.Name()] = pythonRuntime
 	}
 
 	logger.Infof("Executor ready. %d runtime(s) available for this agent", len(runtimes))
