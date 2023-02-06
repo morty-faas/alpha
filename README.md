@@ -12,7 +12,8 @@ The project is a mainly a PoC for now. We will need to refactor some things and 
 
 Alpha has a support only the following runtimes for now :
 
-- NodeJS
+- NodeJS (`node`)
+- Python (`python`)
 
 ## Development
 

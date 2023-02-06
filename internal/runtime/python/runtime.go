@@ -73,9 +73,9 @@ func (r *runtime) Execute(iid, wd string, vars run.FnVars) (*run.FnExecution, er
 	}
 
 	logger.Info("Injecting custom function wrapper")
-	// We assume that an index.js file is present into the working directory.
-	// The index.js file must export a function called `handler` in order to be executed.
-	// We need to inject a custom wrapper in order to pass context / variables to our functions.
+	// We assume that a main.py file is present into the working directory.
+	// The main.py file include a function called `handler` in order to be executed.
+	// We need to inject a custom wrapper in order to pass context / variables to our function.
 	wrapper := []byte(`
 from main import handler
 import sys, json
