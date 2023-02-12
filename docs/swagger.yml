@@ -1,0 +1,84 @@
+openapi: 3.0.3
+info:
+  title: Alpha - FaaS executor
+  description: |-
+    This document aims to provide a simple and clear Alpha endpoints documentation.
+  version: 1.0.0
+externalDocs:
+  description: Github
+  url: https://github.com/polyxia-org/alpha
+tags:
+  - name: Invocation
+    description: Modules API endpoints
+  - name: Management
+    description: Management endpoints like health, metrics etc.
+paths:
+  /:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvocationRequest"
+      summary: Invoke a function, and get the produced output.
+      tags:
+        - Invocation
+      description: |-
+        This is the primary endpoint to invoke a function and get the produced output function as a response. Currently, we need to provide an URL to a .tar.gz archive of the function code.
+        
+        Every query parameters added to the request will automatically be added as the function context. So if you pass `?name=hello`, the function will receive a `context` with the following entry: `name: hello`.
+      responses:
+        '200':
+          description: The modules array in the response always includes the requested module as the first element.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvocationResponse'
+        '500':
+          description: An error occurred. See the logs of the agent for more details.
+  /healthz:
+    get:
+      tags:
+        - Management
+      summary: Get the health status of the agent
+      description: |-
+        This endpoint return the health status of the agent. It is useful for external tools to know if the agent can receive requests or no.
+      responses:
+        '200':
+          description: The health status of the agent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+components:
+  schemas:
+    InvocationRequest:
+      type: object
+      properties:
+        runtime:
+          type: string
+          description: "The runtime for the given function"
+          enum:
+            - node
+            - python
+        code:
+          type: string
+          example: "https://gitlab.com/N4rkos/js-lambda-showcase/-/archive/main/js-lambda-showcase-main.tar.gz"
+          description: An URL to a .tar.gz archive of the function code
+    InvocationResponse:
+      type: object
+      properties:
+        output:
+          type: string
+          description: A JSON string of the return statement of the function.
+        process_exit_code:
+          type: number
+          example: 0
+          description: The exit code of the function execution
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: UP
