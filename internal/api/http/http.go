@@ -28,6 +28,7 @@ func NewServer(ex *executor.Executor) *server {
 func (s *server) Serve() error {
 	r := chi.NewRouter()
 	r.Post("/", s.invokeHandler)
+	r.Get("/healthz", s.healthHandler)
 
 	serv := &http.Server{
 		Addr:    fmt.Sprintf("0.0.0.0:3000"),

@@ -11,6 +11,10 @@ type (
 		Runtime string `json:"runtime"`
 		Code    string `json:"code"`
 	}
+
+	HealthResponse struct {
+		Status string `json:"status"`
+	}
 )
 
 var (

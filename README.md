@@ -2,7 +2,9 @@
 
 **Alpha** is a little agent written in **Go** responsible for running function code on the host where it runs.
 
-Currently, Alpha exposes only a single HTTP endpoint on the port.
+Currently, Alpha exposes only two HTTP endpoints on the port 3000 : 
+- `POST http://localhost:3000` : Invoke a function, see the [development](#development) section.
+- `GET http://localhost:3000/healthz` : Get the health status of the agent.
 
 ## State
 
