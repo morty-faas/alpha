@@ -69,13 +69,32 @@ components:
     InvocationResponse:
       type: object
       properties:
-        output:
-          type: string
-          description: A JSON string of the return statement of the function.
-        process_exit_code:
-          type: number
-          example: 0
-          description: The exit code of the function execution
+        payload:
+          type: object
+          description: The JSON object returned by the function
+        process:
+          type: object
+          properties:
+            runtime:
+              type: object
+              properties:
+                name:
+                  type: string
+                  default: node
+                  description: The name of the runtime used by the function
+                version:
+                  type: string
+                  description: The version of the runtime
+            execution_time_millis:
+              type: number
+              description: The execution time for the function in MS
+            exit_code:
+              type: number
+              description: The function process exit code
+            logs:
+              type: array
+              items:
+                type: string
     HealthResponse:
       type: object
       properties:
