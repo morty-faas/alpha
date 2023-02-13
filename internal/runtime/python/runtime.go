@@ -1,27 +1,32 @@
 package python
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
-	run "github.com/polyxia-org/agent/internal/runtime"
 	log "github.com/sirupsen/logrus"
 )
 
 const (
 	runtimeName = "python"
+
+	runtimeWrapper = `
+from main import handler
+import sys, json
+
+context = json.loads(sys.argv[1]);
+
+print(json.dumps(handler(context)))
+`
 )
 
 type runtime struct {
 	Logger *log.Entry
 }
-
-// Ensure implementation of `Runtime` interface
-var _ run.Runtime = (*runtime)(nil)
 
 func New() (*runtime, error) {
 	r := &runtime{}
@@ -60,54 +65,43 @@ func (r *runtime) Version() (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// Execute runs a function using the runtime.
-func (r *runtime) Execute(iid, wd string, vars run.FnVars) (*run.FnExecution, error) {
+// WrapCmd will set up all the required stuff inside the working directory, like
+// installing dependencies, injecting wrapper etc.
+func (r *runtime) WrapCmd(ctx context.Context) (*exec.Cmd, error) {
+	wd := ctx.Value("wd").(string)
+	iid := ctx.Value("iid").(string)
+
 	logger := r.Logger.WithField("wd", wd).WithField("iid", iid)
 
 	// First, we need to check for a requirements.txt file inside the current working directory
 	// and if it exists, we run the dependencies installation task
 	if _, err := os.Stat(filepath.Join(wd, "requirements.txt")); !os.IsNotExist(err) {
+		logger.Debug("requirements.txt file detected inside the working directory")
 		if err := r.installDependencies(wd); err != nil {
 			return nil, err
 		}
 	}
 
-	logger.Info("Injecting custom function wrapper")
-	// We assume that a main.py file is present into the working directory.
+	// Inject the runtime wrapper inside the working directory.
+	// Currently, we assume that a main.py file is present into the working directory.
 	// The main.py file include a function called `handler` in order to be executed.
 	// We need to inject a custom wrapper in order to pass context / variables to our function.
-	wrapper := []byte(`
-from main import handler
-import sys, json
-
-context = json.loads(sys.argv[1]);
-
-print(handler(context))
-	`)
-
 	trigger := fmt.Sprintf("%s.py", iid)
-	if err := os.WriteFile(filepath.Join(wd, trigger), wrapper, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(wd, trigger), []byte(runtimeWrapper), 0644); err != nil {
 		panic(err)
 	}
 
-	jsonVars, _ := json.Marshal(vars)
+	logger.Debug("Wrapper injected into function working directory")
 
-	cmd := exec.Command("python", trigger, string(jsonVars))
-	cmd.Dir = wd
-	out, _ := cmd.CombinedOutput()
-
-	return &run.FnExecution{
-		ExitCode: cmd.ProcessState.ExitCode(),
-		Output:   string(out),
-	}, nil
+	return exec.Command("python", trigger), nil
 }
 
 func (r *runtime) installDependencies(wd string) error {
-	r.Logger.Info("Installing dependencies")
+	r.Logger.Debug("Installing dependencies")
 	cmd := exec.Command("pip", "install", "-r", "requirements.txt")
 	cmd.Dir = wd
 	out, err := cmd.CombinedOutput()
 	r.Logger.Trace(string(out))
-	r.Logger.Info("Dependencies installed")
+	r.Logger.Debug("Dependencies installed")
 	return err
 }
