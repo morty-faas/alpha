@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/polyxia-org/agent/internal/executor"
+	"github.com/polyxia-org/agent/internal/runtime"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 )
@@ -13,11 +13,11 @@ import (
 type (
 	server struct {
 		logger *log.Logger
-		ex     *executor.Executor
+		ex     *runtime.Invoker
 	}
 )
 
-func NewServer(ex *executor.Executor) *server {
+func NewServer(ex *runtime.Invoker) *server {
 	logger := log.New()
 	return &server{
 		logger,

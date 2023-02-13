@@ -1,12 +1,16 @@
 package http
 
 import (
+	"context"
+	"github.com/google/uuid"
 	"github.com/polyxia-org/agent/internal/api"
 	"github.com/polyxia-org/agent/internal/runtime"
 	"net/http"
 )
 
 func (s *server) invokeHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := context.WithValue(context.Background(), "iid", uuid.New().String())
+
 	invokeRequest, err := parseRequestBody[api.InvokeRequest](r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -24,12 +28,16 @@ func (s *server) invokeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Parse query arguments into runtime.FnVars
-	vars := runtime.FnVars{}
+	params := runtime.FnParams{}
 	for k := range r.URL.Query() {
-		vars[k] = r.URL.Query().Get(k)
+		params[k] = r.URL.Query().Get(k)
 	}
 
-	result, err := s.ex.Invoke(invokeRequest, vars)
+	result, err := s.ex.Invoke(ctx, &runtime.FnInvocation{
+		CodeURL: invokeRequest.Code,
+		Runtime: invokeRequest.Runtime,
+		Params:  params,
+	})
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
