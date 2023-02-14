@@ -18,9 +18,26 @@ const (
 from main import handler
 import sys, json
 
-context = json.loads(sys.argv[1]);
+class Logger:
+	def log(self, message):
+		print(message, file=sys.stderr)	
 
-print(json.dumps(handler(context)))
+class Context(dict):
+    def __init__(self, *args, **kwargs):
+        super(Context, self).__init__(*args, **kwargs)
+        self.logger = Logger()
+
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError:
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+
+ctx = Context()
+
+params = json.loads(sys.argv[1]);
+
+print(json.dumps(handler(ctx, params)))
 `
 )
 
