@@ -8,7 +8,6 @@ error_log="/var/log/${RC_SVCNAME}.err"
 pidfile="/run/${RC_SVCNAME}.pid"
 
 command="/usr/bin/alpha"
-command_user="runner:runner"
 
 depend() {
 	after net
