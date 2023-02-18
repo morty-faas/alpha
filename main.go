@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -14,6 +13,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/polyxia-org/alpha/internal/config"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -22,9 +24,16 @@ const (
 )
 
 func main() {
-	logger := log.New()
+	// Loading configuration from environment
+	config, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("failed to load config : %v", err)
+	}
 
-	command := os.Getenv("ALPHA_INVOKE")
+	logger := log.New()
+	logger.SetLevel(config.LogLevel)
+
+	command := config.InvokeInstruction
 	if command == "" {
 		logger.Fatalf("Unable to find a valid command in configuration. Please set ALPHA_INVOKE environment variable and restart.")
 	}
@@ -77,7 +86,7 @@ func main() {
 	// If we're not able to parse correctly this URL (potentially due to a misconfiguration)
 	// we should exit immediately as the server will not be able to forward requests
 	// to the downstream service.
-	remote, err := url.Parse("http://127.0.0.1:3000")
+	remote, err := url.Parse(config.Remote)
 	if err != nil {
 		logger.Fatalf("Failed to parse downstream URL: %v", err)
 	}
@@ -98,7 +107,7 @@ func main() {
 	r.HandleFunc(healthEndpoint, healthHandler)
 
 	server := &http.Server{
-		Addr:    "0.0.0.0:8080",
+		Addr:    fmt.Sprintf("0.0.0.0:%d", config.Port),
 		Handler: r,
 	}
 
@@ -137,7 +146,7 @@ func main() {
 		stop()
 	}()
 
-	logger.Infof("Alpha server listening on 0.0.0.0:8080")
+	logger.Infof("Alpha server listening on %s", server.Addr)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		logger.Fatal(err)
 	}
