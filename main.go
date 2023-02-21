@@ -80,7 +80,7 @@ func main() {
 		}
 	}()
 
-	remote, err := url.Parse("http://localhost:3000")
+	remote, err := url.Parse("http://127.0.0.1:3000")
 	handler := func(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) {
 		return func(w http.ResponseWriter, r *http.Request) {
 			r.Host = remote.Host
