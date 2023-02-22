@@ -2,14 +2,18 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -73,16 +77,18 @@ func main() {
 	sc := bufio.NewScanner(stdout)
 	sc.Split(bufio.ScanLines)
 
+	var logs []string
 	// Run into a Go routine because `sc.Scan()` is blocking
 	go func() {
 		for sc.Scan() {
-			m := sc.Text()
+			l := sc.Text()
 
 			// TODO: we currently write every forked process logs to the stdout.
 			// It would be great if we can determine the level of the underlying logs
 			// We put a tag before printing the log line to identify clearly the downstream logs
 			// It will be useful later to collect logs
-			fmt.Println(fmt.Sprintf("downstream: %s", m))
+			fmt.Println(fmt.Sprintf("downstream: %s", l))
+			logs = append(logs, l)
 		}
 	}()
 
@@ -94,11 +100,64 @@ func main() {
 		logger.Fatalf("Failed to parse downstream URL: %v", err)
 	}
 
-	// Configure the reverse proxy to forward requests to our downstream process
+	// Declare the start time of the function invocation
+	// It will be initialized to time.Now before proxying the request
+	var start time.Time
+
+	// Create the reverse proxy to forward requests to our downstream process
 	proxy := httputil.NewSingleHostReverseProxy(remote)
+
+	// Configure a response interceptor to inject instrumentation metadata
+	// into the payload before returning it to the caller.
+	proxy.ModifyResponse = func(r *http.Response) error {
+		elapsed := time.Since(start).Milliseconds()
+
+		defer r.Body.Close()
+
+		// As we can't predict the format of the payload returned
+		// by the upstream, we use `any` here to allow json unmarshalling
+		// We assume that the downstream runtime returns a JSON encodable payload
+		var payload any
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			return err
+		}
+
+		output := &InstrumentedResponse{
+			Payload: payload,
+			Process: &ProcessMetadata{
+				ExecutionTimeMs: elapsed,
+				Logs:            logs,
+			},
+		}
+
+		// Serialize the computed response
+		body, err := json.Marshal(output)
+		if err != nil {
+			return err
+		}
+		contentLength := len(body)
+
+		r.Body = io.NopCloser(bytes.NewReader(body))
+		r.ContentLength = int64(contentLength)
+		r.Header.Set("Content-Length", strconv.Itoa(contentLength))
+
+		// Remove any information on the underlying runtime
+		// to improve security
+		r.Header.Del("X-Powered-By")
+
+		// Reset all instrumentation metadata for
+		// future invocations
+		logs = []string{}
+		start = time.Now()
+
+		return nil
+	}
+
 	handler := func(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) {
 		return func(w http.ResponseWriter, r *http.Request) {
 			r.Host = remote.Host
+
+			start = time.Now()
 			p.ServeHTTP(w, r)
 		}
 	}
