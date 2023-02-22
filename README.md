@@ -20,12 +20,12 @@ Start the agent :
 # You have to define the process to run when the agent starts. You can do it by setting the `ALPHA_INVOKE` environment variable. For example: 
 export ALPHA_INVOKE="node /tmp/index.js"
 
-go run main.go
+go run *.go
 
-# You should see a similar output (your version of node can be different) : 
-INFO[0000] invoke : /usr/bin/node /tmp/index.js 
-Node v18.12.1 is listening on 0.0.0.0:3000
-
+# You should see a similar output (your process can be different)
+INFO[0000] Started process node /runtimes/template/node-19/index.js (pid=41322) 
+INFO[0000] Alpha server listening on 0.0.0.0:8080     
+downstream: Node v19.4.0 is listening on 0.0.0.0:3000
 ```
 
 Alpha is now listening on the port 8080 and will forward http calls to port 3000. 
