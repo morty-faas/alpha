@@ -33,7 +33,6 @@ go run *.go
 # You should see a similar output (your process can be different)
 INFO[0000] Started process node /runtimes/template/node-19/index.js (pid=41322)
 INFO[0000] Alpha server listening on 0.0.0.0:8080
-downstream: Node v19.4.0 is listening on 0.0.0.0:3000
 ```
 
 Alpha is now listening on the port 8080 and will forward http calls to port 3000.
@@ -41,14 +40,20 @@ Alpha is now listening on the port 8080 and will forward http calls to port 3000
 Execute a function without variables through the agent :
 
 ```bash
-curl -XPOST http://localhost:8080
+curl http://localhost:8080
+```
 
-# You should receive the response from the function :
-My first function !
-
-# You can see the logs from the function in the agent's logs :
-Random animal name : Curious Seahorse
-
+You should see a similar output (values can be different depending on what you're launching. `payload` will be the return of your function) : 
+```json
+{
+  "payload": "Hello, world !",
+  "process_metadata": {
+    "execution_time_ms": 149,
+    "logs": [
+      "Sending request to https://jsonplaceholder.typicode.com/posts/1"
+    ]
+  }
+}
 ```
 
 ## Configuration
@@ -61,7 +66,3 @@ The supported environment variables are the following :
 - `ALPHA_REMOTE` : The address where the child process listens on (default is `http://127.0.0.1:3000`)
 - `ALPHA_PORT` : The port on which the application will run (default : `8080`)
 - `ALPHA_LOG_LEVEL` : The logging level (default is `4`, which is `Info`)
-
-Execute a function with variables through the agent :
-
-WIP
