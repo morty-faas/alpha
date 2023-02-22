@@ -15,19 +15,10 @@ The project is a mainly a PoC for now. We will need to refactor some things and 
 
 **Alpha was written using **Go 1.19**. We recommend you to install at least **Go 1.19** in order to be able to develop the project.** You need to have at least Node.JS installed locally.
 
-Set up the environment file :
-
-```bash
-cp .env.example .env
-
-# Or either set the `ALPHA_INVOKE` environment variable,
-# to define the process to run when the agent starts :
-export ALPHA_INVOKE="node /tmp/index.js"
-```
-
 Start the agent :
 
 ```bash
+export ALPHA_PROCESS_COMMAND="node /runtimes/template/node-19/index.js"
 go run *.go
 
 # You should see a similar output (your process can be different)
@@ -58,11 +49,18 @@ You should see a similar output (values can be different depending on what you'r
 
 ## Configuration
 
-The application support both `.env` file and environment variables. All the environment variables located in the `.env` file can be overriden with "classic" environment variables using : `export VARIABLE=value`.
+The application support both `yaml` config file and environment variables.
 
-The supported environment variables are the following :
+Below the reference of the configuration file: 
 
-- `ALPHA_INVOKE` (**required**): The process to run when the agent starts
-- `ALPHA_REMOTE` : The address where the child process listens on (default is `http://127.0.0.1:3000`)
-- `ALPHA_PORT` : The port on which the application will run (default : `8080`)
-- `ALPHA_LOG_LEVEL` : The logging level (default is `4`, which is `Info`)
+```yaml
+server:
+  port: 8080
+  logLevel: INFO
+
+process:
+  command: "node /tmp/index.js"
+  downstreamUrl: "http://127.0.0.1:3000"
+```
+
+Every configuration key can be overridden through environment variables. For example to override the `server.port` value, export the following environment variable `ALPHA_SERVER_PORT=8080`.
