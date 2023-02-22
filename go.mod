@@ -1,4 +1,4 @@
-module github.com/polyxia-org/agent
+module github.com/polyxia-org/alpha
 
 go 1.19
 
