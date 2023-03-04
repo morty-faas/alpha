@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/thomasgouveia/go-config"
 	"io"
 	"net/http"
 	"net/http/httputil"
@@ -27,20 +28,24 @@ const (
 )
 
 func main() {
-	// Loading configuration from environment
-	config, err := LoadConfig()
+	cl, err := config.NewLoader(loaderOptions)
+	if err != nil {
+		log.Fatalf("failed to create configuration loader: %v", err)
+	}
+
+	cfg, err := cl.Load()
 	if err != nil {
 		log.Fatalf("failed to load config : %v", err)
 	}
 
-	level, err := log.ParseLevel(config.Server.LogLevel)
+	level, err := log.ParseLevel(cfg.Server.LogLevel)
 	if err != nil {
 		level = log.InfoLevel
 	}
 	logger := log.New()
 	logger.SetLevel(level)
 
-	command := config.Process.Command
+	command := cfg.Process.Command
 	if command == "" {
 		logger.Fatalf("Unable to find a valid command in configuration. Please set ALPHA_INVOKE environment variable and restart.")
 	}
@@ -95,7 +100,7 @@ func main() {
 	// If we're not able to parse correctly this URL (potentially due to a misconfiguration)
 	// we should exit immediately as the server will not be able to forward requests
 	// to the downstream service.
-	remote, err := url.Parse(config.Process.DownstreamURL)
+	remote, err := url.Parse(cfg.Process.DownstreamURL)
 	if err != nil {
 		logger.Fatalf("Failed to parse downstream URL: %v", err)
 	}
@@ -169,7 +174,7 @@ func main() {
 	r.HandleFunc(healthEndpoint, healthHandler)
 
 	server := &http.Server{
-		Addr:    fmt.Sprintf("0.0.0.0:%d", config.Server.Port),
+		Addr:    fmt.Sprintf("0.0.0.0:%d", cfg.Server.Port),
 		Handler: r,
 	}
 
