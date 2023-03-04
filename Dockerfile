@@ -5,5 +5,4 @@ RUN CGO_ENABLED=0 go build -o alpha -a -gcflags=all="-l -B -wb=false" -ldflags="
 
 FROM scratch
 COPY --from=build /build/alpha ./alpha
-COPY ./tools/openrc/openrc.sh .
 ENTRYPOINT ["alpha"]
