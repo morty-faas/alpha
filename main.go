@@ -117,14 +117,23 @@ func main() {
 	proxy.ModifyResponse = func(r *http.Response) error {
 		elapsed := time.Since(start).Milliseconds()
 
-		defer r.Body.Close()
-
 		// As we can't predict the format of the payload returned
 		// by the upstream, we use `any` here to allow json unmarshalling
 		// We assume that the downstream runtime returns a JSON encodable payload
 		var payload any
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+
+		by, err := io.ReadAll(r.Body)
+		if err != nil {
 			return err
+		}
+		defer r.Body.Close()
+
+		// Try to parse the bytes as JSON
+		// If an error occurs, we don't want to return an error
+		// because it means that the server has answered another format
+		if err := json.Unmarshal(by, &payload); err != nil {
+			logger.Warnf("failed to parse downstream response as JSON: %v. Payload will be evaluated as text value", err)
+			payload = string(by)
 		}
 
 		output := &InstrumentedResponse{
