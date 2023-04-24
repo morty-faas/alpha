@@ -1,8 +1,7 @@
 on:
-  push:
-    branches: [ main ]
   release:
-    types: [ created ]
+    types: [ published ]
+
   workflow_dispatch:
     inputs:
       tag:
@@ -48,5 +47,5 @@ jobs:
           push: true
           file: Dockerfile
           platforms: linux/amd64, linux/arm64
-          tags: ${{ env.RELEASE_TAG }}
+          tags: ${{ if env.RELEASE_TAG }}
           labels: ${{ steps.meta.outputs.labels }}
