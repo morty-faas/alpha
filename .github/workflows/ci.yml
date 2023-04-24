@@ -40,6 +40,8 @@ jobs:
         id: meta
         with:
           images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=${{ env.RELEASE_TAG }}
 
       - uses: docker/build-push-action@v3
         with:
@@ -47,5 +49,5 @@ jobs:
           push: true
           file: Dockerfile
           platforms: linux/amd64, linux/arm64
-          tags: ${{ env.RELEASE_TAG }}
+          tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
