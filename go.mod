@@ -1,4 +1,4 @@
-module github.com/polyxia-org/alpha
+module github.com/morty-faas/alpha
 
 go 1.19
 
