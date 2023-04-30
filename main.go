@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/thomasgouveia/go-config"
 	"io"
 	"net/http"
 	"net/http/httputil"
@@ -19,12 +18,17 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/thomasgouveia/go-config"
+
 	log "github.com/sirupsen/logrus"
 )
 
 const (
 	rootEndpoint   = "/"
 	healthEndpoint = "/_/health"
+
+	stateFailed  = "FAILED"
+	stateSuccess = "SUCCESS"
 )
 
 func main() {
@@ -92,7 +96,7 @@ func main() {
 			// It would be great if we can determine the level of the underlying logs
 			// We put a tag before printing the log line to identify clearly the downstream logs
 			// It will be useful later to collect logs
-			fmt.Println(fmt.Sprintf("downstream: %s", l))
+			fmt.Printf("downstream: %s\n", l)
 			logs = append(logs, l)
 		}
 	}()
@@ -111,6 +115,36 @@ func main() {
 
 	// Create the reverse proxy to forward requests to our downstream process
 	proxy := httputil.NewSingleHostReverseProxy(remote)
+
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		// EOF is returned by the backend if no response was received
+		// In our case, it means that the underlying process has probably crashed.
+		if err == io.EOF {
+			output := &InstrumentedResponse{
+				Payload: "The process just crashed and will be restarted. Please check the logs provided for further details.",
+				Process: &ProcessMetadata{
+					State:           stateFailed,
+					ExecutionTimeMs: 0,
+					Logs:            logs,
+				},
+			}
+
+			// Try to restart the process, we don't want to crash only one time.
+			if err := cmd.Process.Kill(); err != nil {
+				logger.Errorf("failed to send SIGINT to downstream process: %v", err)
+			}
+
+			cmd.Process = nil
+			if err := cmd.Start(); err != nil {
+				logger.Errorf("failed to automatically restart downstream process: %v", err)
+			}
+
+			// Send a detailed response to the caller
+			w.WriteHeader(http.StatusBadGateway)
+			json.NewEncoder(w).Encode(output)
+			return
+		}
+	}
 
 	// Configure a response interceptor to inject instrumentation metadata
 	// into the payload before returning it to the caller.
@@ -139,6 +173,7 @@ func main() {
 		output := &InstrumentedResponse{
 			Payload: payload,
 			Process: &ProcessMetadata{
+				State:           stateSuccess,
 				ExecutionTimeMs: elapsed,
 				Logs:            logs,
 			},
