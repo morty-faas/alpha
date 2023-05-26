@@ -215,7 +215,7 @@ func main() {
 
 	r := http.NewServeMux()
 	r.HandleFunc(rootEndpoint, handler(proxy))
-	r.HandleFunc(healthEndpoint, healthHandler)
+	r.HandleFunc(healthEndpoint, healthHandler(remote.String()))
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf("0.0.0.0:%d", cfg.Server.Port),
